@@ -4,12 +4,14 @@ pragma solidity >=0.7.0 <0.9.0;
 
 contract Project {
 
+    enum ProjectState { open, closed }
+
     struct FundProjectData {
         string id;
         string name;
         string description;
         address payable author;
-        string state;
+        ProjectState state;
         uint funds;
         uint fundraisingGoal;
 
@@ -18,7 +20,7 @@ contract Project {
     FundProjectData public fundData;
 
     constructor(string memory _id, string memory _name, string memory _description, uint fundraisingGoal ) {
-        fundData = FundProjectData(_id, _name, _description, payable(msg.sender), "open", 0, fundraisingGoal);
+        fundData = FundProjectData(_id, _name, _description, payable(msg.sender), ProjectState.open, 0, fundraisingGoal);
     }
 
     modifier difOwner() {
@@ -39,7 +41,7 @@ contract Project {
         _;
     }
 
-    error projectClosed(string message, string _state);
+    error projectClosed(string message, ProjectState _state);
     event addFunds(string message, address donator, uint amount );
 
     function fundProject(address payable _donator) public payable difOwner  {
@@ -48,9 +50,8 @@ contract Project {
             "Debe ingresar un monto mayor a 0" 
         );
     
-        if(keccak256(abi.encodePacked(fundData.state)) == keccak256(abi.encodePacked("closed"))) {
-            string memory msgError = "El proyecto esta cerrado";
-            revert projectClosed(msgError, fundData.state);
+        if(fundData.state == ProjectState.closed) {
+            revert projectClosed("El proyecto esta cerrado", fundData.state);
         }else {
             _donator.transfer(msg.value);
             uint amount = msg.value;
@@ -59,10 +60,10 @@ contract Project {
         }   
     }
 
-    event changeState(string message, string oldState, string newState);
+    event changeState(string message, ProjectState oldState, ProjectState newState);
 
-    function changeProjectState(string memory _newState) public onlyOwnerState {
-        string memory oldState = fundData.state;
+    function changeProjectState(ProjectState _newState) public onlyOwnerState {
+        ProjectState oldState = fundData.state;
         fundData.state = _newState;
 
         emit changeState("El autor ha cambiado el estado", oldState, fundData.state);
